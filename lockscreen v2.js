@@ -1,27 +1,8 @@
 // 🔒 Lock Screen widget – Shell Recharge
-// Gebruik als parameter: laadstation-ID (bijv. 4452657)
 // 📍 Voorbeeld-API: https://ui-map.shellrecharge.com/api/map/v2/locations/4452657
+// Gebruik als parameter: laadstation-ID (bijv. 4452657)
 
-// 🧩 Station-ID ophalen uit parameter
-const stationId = args.widgetParameter ? args.widgetParameter.trim() : null;
-
-// 🟡 Geen parameter ingevuld → melding tonen
-if (!stationId) {
-  let widget = new ListWidget();
-  widget.setPadding(6, 8, 6, 8);
-  widget.backgroundColor = new Color("#111827");
-
-  let warn = widget.addText("⚠️ Voer laadstation ID in als parameter");
-  warn.font = Font.semiboldSystemFont(10);
-  warn.textColor = Color.white();
-  warn.centerAlignText();
-
-  if (config.runsInWidget) Script.setWidget(widget);
-  else widget.presentAccessoryRectangular();
-
-  Script.complete();
-  return;
-}
+const stationId = args.widgetParameter ? args.widgetParameter.trim() : "4452657"; // default ID
 
 const url = `https://ui-map.shellrecharge.com/api/map/v2/locations/${stationId}`;
 
@@ -32,10 +13,12 @@ try {
 
   // 🔍 Data uitlezen
   let name = json.name;
-  let status0 = json.evses[0].status;
-  let status1 = json.evses[1].status;
+  let evses = json.evses || [];
+  let total = evses.length;
+  let bezet = evses.filter(e => e.status.toUpperCase() === "OCCUPIED").length;
+  let vrij = total - bezet;
 
-  // 🔠 Vertaal status naar tekst
+  // 🔠 Vertaal status
   function vertaalStatus(status) {
     switch (status.toUpperCase()) {
       case "AVAILABLE": return "Beschikbaar";
@@ -45,37 +28,64 @@ try {
     }
   }
 
-  let s0 = vertaalStatus(status0);
-  let s1 = vertaalStatus(status1);
+  let statussen = evses.map(e => vertaalStatus(e.status)).join(" / ");
 
   // 🧩 Widget maken
   let widget = new ListWidget();
   widget.setPadding(8, 10, 8, 10);
-  widget.backgroundColor = new Color("#111827");
+  widget.backgroundColor = new Color("#1e1e1e", 0.6); // halftransparant grijs
 
-  // 🔝 Naam
-  let title = widget.addText(name);
+  // ⚡️ Titel met emoji + naam
+  let titleStack = widget.addStack();
+  titleStack.layoutHorizontally();
+  titleStack.centerAlignContent();
+
+  let icon = titleStack.addText("⚡️ ");
+  icon.font = Font.semiboldSystemFont(13);
+  icon.textColor = Color.white();
+
+  let title = titleStack.addText(name);
   title.font = Font.semiboldSystemFont(13);
   title.textColor = Color.white();
-  title.leftAlignText();
 
   widget.addSpacer(2);
 
-  // ⚡️ Vetgedrukte statussen
-  let statusLine = widget.addText(`${s0} / ${s1}`);
+  // ⚡️ Statustekst
+  let statusLine = widget.addText(statussen);
   statusLine.font = Font.boldSystemFont(12);
-  statusLine.textColor = new Color("#e5e7eb");
+  statusLine.textColor = Color.white();
   statusLine.leftAlignText();
 
-  widget.addSpacer(2);
+  widget.addSpacer(4);
 
-  // 🕒 Kleine update-tijd onderaan
+  // 📊 Bezettingsbalk tekenen
+  const barWidth = 120;
+  const barHeight = 5;
+  const ctx = new DrawContext();
+  ctx.size = new Size(barWidth, barHeight);
+  ctx.opaque = false;
+  ctx.setFillColor(new Color("#374151")); // achtergrond van balk (grijs)
+  ctx.fillRect(new Rect(0, 0, barWidth, barHeight));
+
+  // Vul afhankelijk van bezetting
+  let ratio = bezet / total;
+  let fillColor = bezet === 0 ? new Color("#22c55e") : bezet === 1 ? new Color("#facc15") : new Color("#ef4444");
+  ctx.setFillColor(fillColor);
+  ctx.fillRect(new Rect(0, 0, barWidth * ratio, barHeight));
+
+  let barImage = ctx.getImage();
+  let bar = widget.addImage(barImage);
+  bar.centerAlignImage();
+
+  widget.addSpacer(4);
+
+  // 🕒 Tijdstip
   let now = new Date();
   let hh = now.getHours().toString().padStart(2, "0");
   let mm = now.getMinutes().toString().padStart(2, "0");
   let footer = widget.addText(`🕒 ${hh}:${mm}`);
   footer.font = Font.systemFont(9);
-  footer.textColor = new Color("#9ca3af");
+  footer.textColor = new Color("#d1d5db");
   footer.leftAlignText();
 
   if (config.runsInWidget) Script.setWidget(widget);
@@ -87,17 +97,12 @@ try {
   // ❌ Foutmelding tonen
   let widget = new ListWidget();
   widget.setPadding(6, 6, 6, 6);
-  widget.backgroundColor = new Color("#7f1d1d");
+  widget.backgroundColor = new Color("#7f1d1d", 0.6);
 
   let error = widget.addText("⚠️ Fout bij laden");
   error.font = Font.boldSystemFont(11);
   error.textColor = Color.white();
   error.leftAlignText();
-
-  let msg = widget.addText(e.toString());
-  msg.font = Font.systemFont(8);
-  msg.textColor = new Color("#fca5a5");
-  msg.leftAlignText();
 
   if (config.runsInWidget) Script.setWidget(widget);
   else widget.presentAccessoryRectangular();
