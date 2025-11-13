@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Shell Recharge Locatie Info</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    .info {
+      margin: 20px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+      width: max-content;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Locatie informatie</h1>
+
+  <div id="locatie" class="info">
+    Laden…<br>
+    <span class="label">Naam:</span> <span id="locatie-naam">–</span><br>
+    <span class="label">UID:</span> <span id="locatie-uid">–</span><br>
+  </div>
+
+  <script>
+    const endpoint = 'https://ui-map.shellrecharge.com/api/map/v2/locations/4452657';
+
+    fetch(endpoint)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP-fout! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Stel: de API-response bevat eigenschappen "name" en "uid"
+        const naam = data.name;
+        const uid  = data.uid;
+
+        document.getElementById('locatie-naam').textContent = naam || 'Geen naam gevonden';
+        document.getElementById('locatie-uid').textContent  = uid  || 'Geen UID gevonden';
+      })
+      .catch(error => {
+        console.error('Fout bij ophalen van API:', error);
+        document.getElementById('locatie').textContent = 'Er is een fout opgetreden bij het laden van de informatie.';
+      });
+  </script>
+
+</body>
+</html>
