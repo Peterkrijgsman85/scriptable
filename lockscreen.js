@@ -70,7 +70,7 @@ try {
 
   // ⚡️ Statusregel
   let status = widget.addText(statusText);
-  status.font = Font.semiboldSystemFont(15); // iets groter
+  status.font = Font.semiboldSystemFont(12); 
   status.textColor = Color.white();
   status.leftAlignText();
 
