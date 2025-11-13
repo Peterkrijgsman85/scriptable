@@ -27,37 +27,81 @@ let s1 = vertaalStatus(status1);
 
 // 🎨 Widget maken
 let widget = new ListWidget();
-widget.setPadding(10, 10, 10, 10);
-widget.backgroundColor = new Color("#111827"); // Donkergrijs/blauw
+widget.setPadding(16, 16, 14, 16);
 
-// 🏷️ Titel
-let title = widget.addText(name);
-title.font = Font.boldSystemFont(14);
-title.textColor = Color.white();
-title.centerAlignText();
+// 🌈 Gradient achtergrond
+let gradient = new LinearGradient();
+gradient.colors = [new Color("#0097bb"), new Color("#ffffff")];
+gradient.locations = [0.0, 1.0];
+gradient.startPoint = new Point(0, 0);
+gradient.endPoint = new Point(1, 1);
+widget.backgroundGradient = gradient;
 
+// 🔝 Titelbalk (links naam, rechts ⚡️)
+let header = widget.addStack();
+header.layoutHorizontally();
+header.centerAlignContent();
+
+let title = header.addText(name);
+title.font = Font.semiboldSystemFont(13);
+title.textColor = new Color("#0f172a");
+title.leftAlignText();
+
+header.addSpacer();
+
+let icon = header.addText("⚡️");
+icon.font = Font.systemFont(15);
+icon.textColor = new Color("#facc15");
+
+widget.addSpacer(10);
+
+// ⚡ Functie om statusrijen te maken
+function maakStatusRij(emoji, status) {
+  let stack = widget.addStack();
+  stack.layoutHorizontally();
+  stack.centerAlignContent();
+
+  // 🔌 Emoji links
+  let plug = stack.addText(emoji);
+  plug.font = Font.systemFont(12);
+  plug.textColor = new Color("#0f172a");
+
+  stack.addSpacer();
+
+  // Status rechts
+  let statusText = stack.addText(status);
+  statusText.font = Font.semiboldSystemFont(13);
+  statusText.rightAlignText();
+
+  if (status === "Beschikbaar") {
+    statusText.textColor = new Color("#059669"); // Groen
+  } else if (status === "Bezet") {
+    statusText.textColor = new Color("#dc2626"); // Rood
+  } else {
+    statusText.textColor = new Color("#ca8a04"); // Geel
+  }
+
+  return stack;
+}
+
+// 🔌🅿️ Punt 1 (met parkeericoon)
+maakStatusRij("🔌🅿️", s0);
 widget.addSpacer(6);
 
-// 🚗 Status 1
-let t1 = widget.addText(`Punt 1: ${s0}`);
-t1.font = Font.mediumSystemFont(12);
-t1.textColor = s0 === "Beschikbaar" ? Color.green() : Color.red();
-t1.centerAlignText();
+// 🔌 Punt 2
+maakStatusRij("🔌", s1);
 
-// ⚡ Status 2
-let t2 = widget.addText(`Punt 2: ${s1}`);
-t2.font = Font.mediumSystemFont(12);
-t2.textColor = s1 === "Beschikbaar" ? Color.green() : Color.red();
-t2.centerAlignText();
-
-widget.addSpacer(4);
+// Extra ruimte zodat footer losser onderaan staat
+widget.addSpacer(12);
 
 // 🕒 Laatst geüpdatet
 let now = new Date();
-let time = widget.addText(`Laatste update: ${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`);
-time.font = Font.systemFont(9);
-time.textColor = new Color("#9CA3AF");
-time.centerAlignText();
+let hh = now.getHours().toString().padStart(2, "0");
+let mm = now.getMinutes().toString().padStart(2, "0");
+let footer = widget.addText(`Laatste update: ${hh}:${mm}`);
+footer.font = Font.systemFont(9);
+footer.textColor = new Color("#334155");
+footer.centerAlignText();
 
 // 🧩 Toon widget
 if (config.runsInWidget) {
