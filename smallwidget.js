@@ -1,113 +1,169 @@
 // Kleine Scriptable widget voor Shell Recharge locatie
-// URL: https://ui-map.shellrecharge.com/api/map/v2/locations/4452657
+// 📍 Gebruik als parameter: laadstation-ID (bijv. 4452657)
+// Voorbeeld API: https://ui-map.shellrecharge.com/api/map/v2/locations/4452657
 
-const url = "https://ui-map.shellrecharge.com/api/map/v2/locations/4452657";
+// 🔧 Station-ID als parameter
+const stationId = args.widgetParameter ? args.widgetParameter.trim() : null;
 
-// 🟢 Data ophalen van de API
-let req = new Request(url);
-let json = await req.loadJSON();
+// 🧩 Controleer of parameter is ingevuld
+if (!stationId) {
+  let widget = new ListWidget();
+  widget.setPadding(16, 16, 16, 16);
 
-// 🔍 Gegevens uitlezen
-let name = json.name;
-let status0 = json.evses[0].status;
-let status1 = json.evses[1].status;
+  // 🌈 Achtergrondkleur met lichte gradient
+  let gradient = new LinearGradient();
+  gradient.colors = [new Color("#0097bb"), new Color("#ffffff")];
+  gradient.locations = [0.0, 1.0];
+  gradient.startPoint = new Point(0, 0);
+  gradient.endPoint = new Point(1, 1);
+  widget.backgroundGradient = gradient;
 
-// 🔠 Vertaal status
-function vertaalStatus(status) {
-  switch (status.toUpperCase()) {
-    case "AVAILABLE": return "Beschikbaar";
-    case "OCCUPIED": return "Bezet";
-    case "OUTOFORDER": return "Defect";
-    default: return status;
-  }
-}
+  let warn = widget.addText("⚠️ Voer laadstation ID in als parameter");
+  warn.font = Font.boldSystemFont(12);
+  warn.textColor = new Color("#1e293b");
+  warn.centerAlignText();
 
-let s0 = vertaalStatus(status0);
-let s1 = vertaalStatus(status1);
-
-// 🎨 Widget maken
-let widget = new ListWidget();
-widget.setPadding(16, 16, 14, 16);
-
-// 🌈 Gradient achtergrond
-let gradient = new LinearGradient();
-gradient.colors = [new Color("#0097bb"), new Color("#ffffff")];
-gradient.locations = [0.0, 1.0];
-gradient.startPoint = new Point(0, 0);
-gradient.endPoint = new Point(1, 1);
-widget.backgroundGradient = gradient;
-
-// 🔝 Titelbalk (links naam, rechts ⚡️)
-let header = widget.addStack();
-header.layoutHorizontally();
-header.centerAlignContent();
-
-let title = header.addText(name);
-title.font = Font.semiboldSystemFont(13);
-title.textColor = new Color("#0f172a");
-title.leftAlignText();
-
-header.addSpacer();
-
-let icon = header.addText("⚡️");
-icon.font = Font.systemFont(15);
-icon.textColor = new Color("#facc15");
-
-widget.addSpacer(10);
-
-// ⚡ Functie om statusrijen te maken
-function maakStatusRij(emoji, status) {
-  let stack = widget.addStack();
-  stack.layoutHorizontally();
-  stack.centerAlignContent();
-
-  // 🔌 Emoji links
-  let plug = stack.addText(emoji);
-  plug.font = Font.systemFont(12);
-  plug.textColor = new Color("#0f172a");
-
-  stack.addSpacer();
-
-  // Status rechts
-  let statusText = stack.addText(status);
-  statusText.font = Font.semiboldSystemFont(13);
-  statusText.rightAlignText();
-
-  if (status === "Beschikbaar") {
-    statusText.textColor = new Color("#059669"); // Groen
-  } else if (status === "Bezet") {
-    statusText.textColor = new Color("#dc2626"); // Rood
+  if (config.runsInWidget) {
+    Script.setWidget(widget);
   } else {
-    statusText.textColor = new Color("#ca8a04"); // Geel
+    widget.presentSmall();
+  }
+  Script.complete();
+  return;
+}
+
+const url = `https://ui-map.shellrecharge.com/api/map/v2/locations/${stationId}`;
+
+try {
+  // 🟢 Data ophalen van de API
+  let req = new Request(url);
+  let json = await req.loadJSON();
+
+  // 🔍 Gegevens uitlezen
+  let name = json.name;
+  let status0 = json.evses[0].status;
+  let status1 = json.evses[1].status;
+
+  // 🔠 Vertaal status
+  function vertaalStatus(status) {
+    switch (status.toUpperCase()) {
+      case "AVAILABLE": return "Beschikbaar";
+      case "OCCUPIED": return "Bezet";
+      case "OUTOFORDER": return "Defect";
+      default: return status;
+    }
   }
 
-  return stack;
+  let s0 = vertaalStatus(status0);
+  let s1 = vertaalStatus(status1);
+
+  // 🎨 Widget maken
+  let widget = new ListWidget();
+  widget.setPadding(16, 16, 14, 16);
+
+  // 🌈 Gradient achtergrond
+  let gradient = new LinearGradient();
+  gradient.colors = [new Color("#0097bb"), new Color("#ffffff")];
+  gradient.locations = [0.0, 1.0];
+  gradient.startPoint = new Point(0, 0);
+  gradient.endPoint = new Point(1, 1);
+  widget.backgroundGradient = gradient;
+
+  // 🔝 Titelbalk (links naam, rechts ⚡️)
+  let header = widget.addStack();
+  header.layoutHorizontally();
+  header.centerAlignContent();
+
+  let title = header.addText(name);
+  title.font = Font.semiboldSystemFont(13);
+  title.textColor = new Color("#0f172a");
+  title.leftAlignText();
+
+  header.addSpacer();
+
+  let icon = header.addText("⚡️");
+  icon.font = Font.systemFont(15);
+  icon.textColor = new Color("#facc15");
+
+  widget.addSpacer(10);
+
+  // ⚡ Functie om statusrijen te maken
+  function maakStatusRij(emoji, status) {
+    let stack = widget.addStack();
+    stack.layoutHorizontally();
+    stack.centerAlignContent();
+
+    // 🔌 Emoji links
+    let plug = stack.addText(emoji);
+    plug.font = Font.systemFont(12);
+    plug.textColor = new Color("#0f172a");
+
+    stack.addSpacer();
+
+    // Status rechts
+    let statusText = stack.addText(status);
+    statusText.font = Font.semiboldSystemFont(13);
+    statusText.rightAlignText();
+
+    if (status === "Beschikbaar") {
+      statusText.textColor = new Color("#059669"); // Groen
+    } else if (status === "Bezet") {
+      statusText.textColor = new Color("#dc2626"); // Rood
+    } else {
+      statusText.textColor = new Color("#ca8a04"); // Geel
+    }
+
+    return stack;
+  }
+
+  // 🔌🅿️ Punt 1
+  maakStatusRij("🔌🅿️", s0);
+  widget.addSpacer(6);
+
+  // 🔌 Punt 2
+  maakStatusRij("🔌", s1);
+
+  widget.addSpacer(12);
+
+  // 🕒 Laatst geüpdatet
+  let now = new Date();
+  let hh = now.getHours().toString().padStart(2, "0");
+  let mm = now.getMinutes().toString().padStart(2, "0");
+  let footer = widget.addText(`Laatste update: ${hh}:${mm}`);
+  footer.font = Font.systemFont(9);
+  footer.textColor = new Color("#334155");
+  footer.centerAlignText();
+
+  // 🧩 Toon widget
+  if (config.runsInWidget) {
+    Script.setWidget(widget);
+  } else {
+    widget.presentSmall();
+  }
+
+  Script.complete();
+
+} catch (e) {
+  // ❌ Foutmelding tonen in widget
+  let widget = new ListWidget();
+  widget.setPadding(16, 16, 16, 16);
+  widget.backgroundColor = new Color("#fee2e2");
+
+  let errorText = widget.addText("⚠️ Fout bij laden\n");
+  errorText.font = Font.boldSystemFont(12);
+  errorText.textColor = new Color("#991b1b");
+  errorText.centerAlignText();
+
+  let msg = widget.addText(e.toString());
+  msg.font = Font.systemFont(9);
+  msg.textColor = new Color("#b91c1c");
+  msg.centerAlignText();
+
+  if (config.runsInWidget) {
+    Script.setWidget(widget);
+  } else {
+    widget.presentSmall();
+  }
+
+  Script.complete();
 }
-
-// 🔌🅿️ Punt 1 (met parkeericoon)
-maakStatusRij("🔌🅿️", s0);
-widget.addSpacer(6);
-
-// 🔌 Punt 2
-maakStatusRij("🔌", s1);
-
-// Extra ruimte zodat footer losser onderaan staat
-widget.addSpacer(12);
-
-// 🕒 Laatst geüpdatet
-let now = new Date();
-let hh = now.getHours().toString().padStart(2, "0");
-let mm = now.getMinutes().toString().padStart(2, "0");
-let footer = widget.addText(`Laatste update: ${hh}:${mm}`);
-footer.font = Font.systemFont(9);
-footer.textColor = new Color("#334155");
-footer.centerAlignText();
-
-// 🧩 Toon widget
-if (config.runsInWidget) {
-  Script.setWidget(widget);
-} else {
-  widget.presentSmall();
-}
-
-Script.complete();
