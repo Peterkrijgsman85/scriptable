@@ -6,7 +6,7 @@ const stationId = args.widgetParameter ? args.widgetParameter.trim() : null;
 // 🧩 Controleer of parameter is ingevuld
 if (!stationId) {
   let widget = new ListWidget();
-  widget.setPadding(10, 10, 10, 10); // ⭐ padding rondom 10px
+  widget.setPadding(15, 15, 15, 15); // ⭐ padding rondom 10px
 
   // 🌈 Achtergrondkleur met lichte gradient
   let gradient = new LinearGradient();
@@ -71,7 +71,7 @@ try {
 
   // 🎨 Widget maken
   let widget = new ListWidget();
-  widget.setPadding(10, 10, 10, 10); // ⭐ padding rondom 10px
+  widget.setPadding(15, 15, 15, 15); // ⭐ padding rondom 10px
 
   // 🌈 Gradient achtergrond
   let gradient = new LinearGradient();
@@ -166,7 +166,7 @@ try {
 
 } catch (e) {
   let widget = new ListWidget();
-  widget.setPadding(10, 10, 10, 10);
+  widget.setPadding(15, 15, 15, 15);
   widget.backgroundColor = new Color("#fee2e2");
 
   let errorText = widget.addText("⚠️ Fout bij laden\n");
