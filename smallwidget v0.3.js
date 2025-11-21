@@ -33,7 +33,7 @@ try {
   let req = new Request(url);
   let json = await req.loadJSON();
 
-  let name = json.name;
+  let name = json.address.streetAndNumber || "Onbekende locatie";
   let ev0 = json.evses[0];
   let ev1 = json.evses[1];
 
