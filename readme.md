@@ -8,7 +8,7 @@ Een compacte **Scriptable widget voor iOS** die de status toont van een Shell Re
 - Optionele **push notificaties** bij statuswijzigingen  
 - Moderne UI met kleuraccenten en emoji-iconen  
 
-De widget werkt met elke laadpaal die zichtbaar is op de Shell Recharge-kaart.
+De widget werkt met laadpalen met 2 connectoren (de standaard straatpaal) die zichtbaar zijn op de Shell Recharge-kaart.
 
 ---
 
