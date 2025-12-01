@@ -104,19 +104,5 @@ Gebruik dat ID in de widget-parameter.
 ## 📄 Licentie
 
 Vrij te gebruiken, aan te passen en te delen.  
-Je kunt optioneel een MIT-licentie toevoegen.
 
----
-
-## ❓ Vragen of uitbreidingen?
-
-Mogelijke uitbreidingen:
-
-- Melding uitsluitend bij “Beschikbaar”-status  
-- Large of Medium widget  
-- Transparante achtergrond  
-- Apple Watch ondersteuning  
-- Logboek van statuswijzigingen  
-
-Laat het weten — ik help graag verder!
 
