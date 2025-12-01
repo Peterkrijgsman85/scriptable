@@ -21,7 +21,7 @@ De widget toont voor elke connector:
 - Statusbadge  
 - Laatste update tijdstip  
 
-### ✔ Push notificaties (optioneel)  
+### ✔ Push notificaties (optioneel voor smallwidget v1.1)  
 Ontvang een melding zodra één van de laadpunten van status verandert.  
 Voorbeeldmelding:
 
@@ -31,6 +31,9 @@ Plug 2: Beschikbaar → Beschikbaar
 
 ### ✔ Moderne layout  
 Ontworpen voor kleine iOS-widgets, met gradients en nette typografie.
+
+![633800A0-52BB-4724-9CC2-ADF4C9662F8A_1_201_a](https://github.com/user-attachments/assets/a48a1f8a-4072-46b4-9d5f-8cb72fb3ca65)
+
 
 ---
 
