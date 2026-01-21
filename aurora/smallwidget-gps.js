@@ -1,11 +1,8 @@
-// Scriptable – Aurora & Weather "Chance of View" (Vaste Badge Kleur)
-// Berekent de kans op basis van KP, Ovation, Wolken en Daglicht
-
+// Scriptable – Aurora & Weather "NL/BE Real-Time Edition"
 let locationName = "ZOEKEN...";
 let LAT, LON;
 let gpsError = false;
 
-// --- 1. GPS & LOCATIE ---
 try {
   const gps = await Location.current();
   LAT = gps.latitude;
@@ -17,8 +14,7 @@ try {
   locationName = "LOCATIE NIET GEVONDEN";
 }
 
-// APIs
-const KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json?c=" + Date.now();
+const KP_URL = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json";
 const OVATION_URL = "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json";
 const WEATHER_URL = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=cloud_cover,is_day&timezone=auto`;
 
@@ -29,10 +25,10 @@ const THEME = {
   sub:      new Color("#cbd5e1"),
   line:     new Color("#22c1a6", 1.0),
   fill:     new Color("#22c1a6", 0.15),
-  grid:     new Color("#ffffff", 0.3), 
+  grid:     new Color("#ffffff", 0.8), 
   auroraRed: new Color("#ff3b3b", 0.12), 
   aurora1:   new Color("#2ee6a6", 0.10),
-  warning:   new Color("#f1c40f") // Alleen voor de statustekst
+  warning:   new Color("#f1c40f")
 };
 
 await main();
@@ -49,24 +45,31 @@ async function main() {
   }
 
   const [kpSeries, ovationObj, weatherObj] = await Promise.all([
-    fetchLastNPoints(10), 
+    fetchLastNPoints(144, 10), 
     fetchJson(OVATION_URL),
     fetchJson(WEATHER_URL)
   ]);
 
-  if (!kpSeries) { w.addText("Data error."); Script.setWidget(w); return; }
+  if (!kpSeries || kpSeries.length === 0) { 
+    w.addText("Data error."); 
+    Script.setWidget(w); 
+    return; 
+  }
 
-  // --- BEREKENING KANS OP ZICHT ---
+  const lastPoint = kpSeries[kpSeries.length - 1];
+  const currentKP = lastPoint.kp;
   const rawProb = nearestOvationProb(ovationObj?.coordinates, LAT, LON);
   const cloudCover = weatherObj?.current?.cloud_cover ?? 0;
   const isDay = weatherObj?.current?.is_day ?? 0;
 
-  // Formule: Kans = Magnetische kans * (Gedeelte onbewolkt)
-  // Als het dag is, is de kans altijd 0.
-  let chanceOfView = rawProb * ((100 - cloudCover) / 100);
+  // NL/BE KANS BEREKENING
+  let kpFactor = Math.min(100, (currentKP / 7) * 100); 
+  let combinedProb = (rawProb * 0.7) + (kpFactor * 0.3);
+  let nlWeight = currentKP < 4.0 ? 0.05 : (currentKP < 5.5 ? 0.4 : 1.0);
+  let chanceOfView = (combinedProb * nlWeight) * ((100 - cloudCover) / 100);
   if (isDay === 1) chanceOfView = 0;
 
-  const lastPoint = kpSeries[kpSeries.length - 1];
+  // Teken de grafiek
   w.backgroundImage = await drawPlot(kpSeries);
 
   // --- HEADER ---
@@ -77,10 +80,9 @@ async function main() {
   badge.backgroundColor = THEME.badgeBg;
   badge.cornerRadius = 6;
   badge.setPadding(3, 6, 3, 6);
-  
   const pctTxt = badge.addText(`${Math.round(chanceOfView)}%`);
   pctTxt.font = Font.boldSystemFont(15);
-  pctTxt.textColor = THEME.badgeTx; // Altijd de standaard thema kleur
+  pctTxt.textColor = THEME.badgeTx;
 
   topRow.addSpacer(8);
   const titleStack = topRow.addStack();
@@ -90,24 +92,28 @@ async function main() {
   t1.font = Font.boldSystemFont(11); 
   t1.textColor = THEME.sub;
   
-  // Dynamische status tekst onder de stadsnaam (kleurt wel mee ter info)
-  let statusText = "NOORDERLICHT";
-  if (isDay === 1) statusText = "DAGLICHT";
-  else if (cloudCover > 70) statusText = `BEWOLKT (${cloudCover}%)`;
-  
+  let statusText = isDay === 1 ? "DAGLICHT" : (cloudCover > 70 ? `BEWOLKT (${cloudCover}%)` : "NOORDERLICHT KANS");
   const t2 = titleStack.addText(statusText);
   t2.font = Font.systemFont(10); 
   t2.textColor = (isDay === 0 && cloudCover <= 70) ? THEME.sub : THEME.warning;
   t2.textOpacity = 0.7;
 
+  // NL TIJD CORRECTIE
+  const timeStr = lastPoint.t.toLocaleTimeString("nl-NL", {hour:"2-digit", minute:"2-digit"});
+  const t3 = titleStack.addText(`KP ${currentKP.toFixed(2)} • ${timeStr}`);
+  t3.font = Font.boldSystemFont(10); 
+  t3.textColor = THEME.sub;
+  t3.textOpacity = 0.9;
+
   w.addSpacer();
 
   // --- FOOTER ---
-  const timeStr = lastPoint.t.toLocaleTimeString("nl-NL", {hour:"2-digit", minute:"2-digit"});
   const bottomRow = w.addStack();
   bottomRow.addSpacer();
-  const ts = bottomRow.addText(`KP ${lastPoint.kp.toFixed(2)} • WOLK: ${cloudCover}% • ${timeStr}`);
-  ts.font = Font.systemFont(8); ts.textColor = THEME.sub; ts.textOpacity = 0.4;
+  const footerTxt = bottomRow.addText("AFGELOPEN 24 UUR");
+  footerTxt.font = Font.boldSystemFont(10); 
+  footerTxt.textColor = THEME.sub;
+  footerTxt.textOpacity = 0.6;
   bottomRow.addSpacer();
 
   Script.setWidget(w);
@@ -115,17 +121,16 @@ async function main() {
   Script.complete();
 }
 
-// ... (fetchLastNPoints, drawPlot, fetchJson, nearestOvationProb functies blijven gelijk aan vorig script)
-
-async function fetchLastNPoints(n) {
+async function fetchLastNPoints(n, step = 1) {
   const data = await fetchJson(KP_URL);
   if (!data || !Array.isArray(data)) return [];
   let points = [];
-  for (let i = data.length - 1; i >= 1; i--) {
-    const row = data[i];
-    const kp = parseFloat(row[1]);
-    if (row[1] !== null && !isNaN(kp)) {
-      points.push({ t: new Date(row[0].replace(" ", "T") + "Z"), kp: kp });
+  for (let i = data.length - 1; i >= 0; i -= step) {
+    const item = data[i];
+    const kp = parseFloat(item.kp_index);
+    if (item.kp_index !== null && !isNaN(kp)) {
+      // De 'Z' in de string zorgt ervoor dat Date() begrijpt dat het UTC is
+      points.push({ t: new Date(item.time_tag + "Z"), kp: kp });
     }
     if (points.length === n) break;
   }
@@ -138,6 +143,8 @@ async function drawPlot(series) {
   const dc = new DrawContext();
   dc.size = new Size(W,H);
   dc.opaque = false;
+
+  // 1. Achtergrond & Aurora Gloed
   dc.setFillColor(THEME.bg);
   dc.fillRect(new Rect(0,0,W,H));
   dc.setFillColor(THEME.auroraRed);
@@ -148,17 +155,19 @@ async function drawPlot(series) {
   const getX = (i) => (i / (series.length - 1)) * (W - 80) + 40;
   const getY = (kp) => GRAPH_BTM - (kp / 9) * (GRAPH_BTM - GRAPH_TOP);
 
-  dc.setLineWidth(2);
+  // 2. Hulplijn KP 6
+  dc.setLineWidth(3);
   dc.setStrokeColor(THEME.grid);
-  const y6 = getY(6);
-  const p6 = new Path();
-  for (let x = 0; x < W; x += 24) {
-    p6.move(new Point(x, y6));
-    p6.addLine(new Point(x + 12, y6));
+  const yTarget = getY(6); 
+  const pTarget = new Path();
+  for (let x = 40; x < W - 40; x += 30) {
+    pTarget.move(new Point(x, yTarget));
+    pTarget.addLine(new Point(x + 15, yTarget));
   }
-  dc.addPath(p6);
+  dc.addPath(pTarget);
   dc.strokePath();
 
+  // 3. De Grafiek Lijn & Vulling
   const lp = new Path();
   const ap = new Path();
   ap.move(new Point(getX(0), GRAPH_BTM));
@@ -171,6 +180,12 @@ async function drawPlot(series) {
   ap.closeSubpath();
   dc.setFillColor(THEME.fill); dc.addPath(ap); dc.fillPath();
   dc.setStrokeColor(THEME.line); dc.setLineWidth(6); dc.addPath(lp); dc.strokePath();
+
+  // 4. KP 6 LABEL (Als laatste tekenen zodat het bovenop alles ligt)
+  dc.setTextColor(THEME.grid);
+  dc.setFont(Font.boldSystemFont(28));
+  // Teken label rechtsboven de lijn
+  dc.drawText("KP 6", new Point(W - 120, yTarget - 40));
 
   return dc.getImage();
 }
