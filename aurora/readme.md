@@ -3,7 +3,6 @@
 Een slimme iOS-widget voor de [Scriptable](https://scriptable.app/) app die de actuele kans op het zien van noorderlicht op jouw locatie berekent. De widget combineert geomagnetische data, lokale bewolking en de stand van de zon voor een eerlijk beeld van de zichtbaarheid.
 
 
-
 ## ✨ Kenmerken
 - **Real-time GPS:** Berekent alles op basis van je huidige coördinaten.
 - **Slimme Kansberekening:** De getoonde kans (%) in de badge houdt direct rekening met bewolking en daglicht.
@@ -17,7 +16,6 @@ $$\text{Zichtkans} = \text{Magnetische Kans (NOAA)} \times \left( \frac{100 - \t
 
 - **Bij daglicht:** De kans wordt direct op **0%** gezet (noorderlicht is overdag niet zichtbaar).
 - **Bij bewolking:** Is het 50% bewolkt? Dan wordt de magnetische kans gehalveerd. Is het 100% bewolkt? Dan is de kans op zicht 0%.
-
 
 
 ## 🚀 Installatie
