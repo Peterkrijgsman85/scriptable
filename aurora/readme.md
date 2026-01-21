@@ -43,5 +43,3 @@ $$\text{Zichtkans} = \text{Magnetische Kans (NOAA)} \times \left( \frac{100 - \t
 - **"Locatie niet gevonden":** Zorg dat de locatievoorzieningen voor Scriptable op "Bij gebruik van app of widgets" staan via `Instellingen > Privacy`.
 - **"Data error":** Controleer je internetverbinding; de widget heeft toegang nodig tot de NOAA en Open-Meteo servers.
 
----
-*Gemaakt voor noorderlichtjagers die verder kijken dan alleen de Kp-waarde.*
