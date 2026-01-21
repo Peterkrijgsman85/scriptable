@@ -1,31 +1,26 @@
-// Scriptable – Aurora Widget (Pure GPS Only)
-// Geen fallback - Geeft foutmelding bij ontbreken GPS
+// Scriptable – Aurora & Weather "Chance of View" (Vaste Badge Kleur)
+// Berekent de kans op basis van KP, Ovation, Wolken en Daglicht
 
 let locationName = "ZOEKEN...";
 let LAT, LON;
 let gpsError = false;
 
-// --- GPS LOCATIE OPHALEN ---
+// --- 1. GPS & LOCATIE ---
 try {
-  // Probeert huidige locatie op te halen
   const gps = await Location.current();
   LAT = gps.latitude;
   LON = gps.longitude;
-  
-  // Zoek de naam van de stad op via Apple Maps
   const geo = await Location.reverseGeocode(LAT, LON);
-  if (geo && geo.length > 0) {
-    locationName = (geo[0].locality || geo[0].name || "ONBEKEND").toUpperCase();
-  } else {
-    locationName = "LOCATIE GEVONDEN";
-  }
+  locationName = (geo[0]?.locality || geo[0]?.name || "LOCATIE").toUpperCase();
 } catch (e) {
   gpsError = true;
   locationName = "LOCATIE NIET GEVONDEN";
 }
 
+// APIs
 const KP_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json?c=" + Date.now();
 const OVATION_URL = "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json";
+const WEATHER_URL = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=cloud_cover,is_day&timezone=auto`;
 
 const THEME = {
   bg:       new Color("#0b1020"),
@@ -35,10 +30,9 @@ const THEME = {
   line:     new Color("#22c1a6", 1.0),
   fill:     new Color("#22c1a6", 0.15),
   grid:     new Color("#ffffff", 0.3), 
-  dot:      new Color("#ffffff", 0.8),
   auroraRed: new Color("#ff3b3b", 0.12), 
   aurora1:   new Color("#2ee6a6", 0.10),
-  aurora2:   new Color("#9b5cf6", 0.07)
+  warning:   new Color("#f1c40f") // Alleen voor de statustekst
 };
 
 await main();
@@ -48,35 +42,31 @@ async function main() {
   w.backgroundColor = THEME.bg;
   w.setPadding(12, 10, 10, 10);
 
-  // Stop als er een GPS fout is
   if (gpsError) {
-    const errStack = w.addStack();
-    errStack.layoutVertically();
-    const t = errStack.addText("Fout: Locatie niet gevonden.");
-    t.font = Font.boldSystemFont(12);
-    t.textColor = new Color("#ff3b3b");
-    const t2 = errStack.addText("Controleer GPS instellingen.");
-    t2.font = Font.systemFont(10);
-    t2.textColor = THEME.sub;
+    w.addText("Fout: Geen GPS.");
     Script.setWidget(w);
-    w.presentSmall();
     return;
   }
 
-  const [kpSeries, ovationObj] = await Promise.all([
+  const [kpSeries, ovationObj, weatherObj] = await Promise.all([
     fetchLastNPoints(10), 
-    fetchJson(OVATION_URL)
+    fetchJson(OVATION_URL),
+    fetchJson(WEATHER_URL)
   ]);
 
-  if (!kpSeries || kpSeries.length === 0) {
-    w.addText("Data error.");
-    Script.setWidget(w);
-    return;
-  }
+  if (!kpSeries) { w.addText("Data error."); Script.setWidget(w); return; }
 
-  const ovProb = nearestOvationProb(ovationObj?.coordinates, LAT, LON);
+  // --- BEREKENING KANS OP ZICHT ---
+  const rawProb = nearestOvationProb(ovationObj?.coordinates, LAT, LON);
+  const cloudCover = weatherObj?.current?.cloud_cover ?? 0;
+  const isDay = weatherObj?.current?.is_day ?? 0;
+
+  // Formule: Kans = Magnetische kans * (Gedeelte onbewolkt)
+  // Als het dag is, is de kans altijd 0.
+  let chanceOfView = rawProb * ((100 - cloudCover) / 100);
+  if (isDay === 1) chanceOfView = 0;
+
   const lastPoint = kpSeries[kpSeries.length - 1];
-
   w.backgroundImage = await drawPlot(kpSeries);
 
   // --- HEADER ---
@@ -87,9 +77,10 @@ async function main() {
   badge.backgroundColor = THEME.badgeBg;
   badge.cornerRadius = 6;
   badge.setPadding(3, 6, 3, 6);
-  const pctTxt = badge.addText(`${Math.round(ovProb)}%`);
+  
+  const pctTxt = badge.addText(`${Math.round(chanceOfView)}%`);
   pctTxt.font = Font.boldSystemFont(15);
-  pctTxt.textColor = THEME.badgeTx;
+  pctTxt.textColor = THEME.badgeTx; // Altijd de standaard thema kleur
 
   topRow.addSpacer(8);
   const titleStack = topRow.addStack();
@@ -99,9 +90,14 @@ async function main() {
   t1.font = Font.boldSystemFont(11); 
   t1.textColor = THEME.sub;
   
-  const t2 = titleStack.addText("NOORDERLICHT");
+  // Dynamische status tekst onder de stadsnaam (kleurt wel mee ter info)
+  let statusText = "NOORDERLICHT";
+  if (isDay === 1) statusText = "DAGLICHT";
+  else if (cloudCover > 70) statusText = `BEWOLKT (${cloudCover}%)`;
+  
+  const t2 = titleStack.addText(statusText);
   t2.font = Font.systemFont(10); 
-  t2.textColor = THEME.sub;
+  t2.textColor = (isDay === 0 && cloudCover <= 70) ? THEME.sub : THEME.warning;
   t2.textOpacity = 0.7;
 
   w.addSpacer();
@@ -110,7 +106,7 @@ async function main() {
   const timeStr = lastPoint.t.toLocaleTimeString("nl-NL", {hour:"2-digit", minute:"2-digit"});
   const bottomRow = w.addStack();
   bottomRow.addSpacer();
-  const ts = bottomRow.addText(`KP ${lastPoint.kp.toFixed(2)} • UPDATE: ${timeStr}`);
+  const ts = bottomRow.addText(`KP ${lastPoint.kp.toFixed(2)} • WOLK: ${cloudCover}% • ${timeStr}`);
   ts.font = Font.systemFont(8); ts.textColor = THEME.sub; ts.textOpacity = 0.4;
   bottomRow.addSpacer();
 
@@ -118,6 +114,8 @@ async function main() {
   w.presentSmall();
   Script.complete();
 }
+
+// ... (fetchLastNPoints, drawPlot, fetchJson, nearestOvationProb functies blijven gelijk aan vorig script)
 
 async function fetchLastNPoints(n) {
   const data = await fetchJson(KP_URL);
@@ -127,10 +125,7 @@ async function fetchLastNPoints(n) {
     const row = data[i];
     const kp = parseFloat(row[1]);
     if (row[1] !== null && !isNaN(kp)) {
-      points.push({
-        t: new Date(row[0].replace(" ", "T") + "Z"),
-        kp: kp
-      });
+      points.push({ t: new Date(row[0].replace(" ", "T") + "Z"), kp: kp });
     }
     if (points.length === n) break;
   }
@@ -143,10 +138,8 @@ async function drawPlot(series) {
   const dc = new DrawContext();
   dc.size = new Size(W,H);
   dc.opaque = false;
-  
   dc.setFillColor(THEME.bg);
   dc.fillRect(new Rect(0,0,W,H));
-  
   dc.setFillColor(THEME.auroraRed);
   dc.fillEllipse(new Rect(-100, -50, W+200, 150));
   dc.setFillColor(THEME.aurora1);
@@ -169,17 +162,13 @@ async function drawPlot(series) {
   const lp = new Path();
   const ap = new Path();
   ap.move(new Point(getX(0), GRAPH_BTM));
-  
   series.forEach((p, i) => {
-    const x = getX(i);
-    const y = getY(p.kp);
+    const x = getX(i); const y = getY(p.kp);
     if (i === 0) lp.move(new Point(x, y)); else lp.addLine(new Point(x, y));
     ap.addLine(new Point(x, y));
   });
-  
   ap.addLine(new Point(getX(series.length - 1), GRAPH_BTM));
   ap.closeSubpath();
-  
   dc.setFillColor(THEME.fill); dc.addPath(ap); dc.fillPath();
   dc.setStrokeColor(THEME.line); dc.setLineWidth(6); dc.addPath(lp); dc.strokePath();
 
